@@ -1,0 +1,100 @@
+---
+title: "Toronto Shelter Facility Jan to Aug Occupancy Rate Explained"
+author: "Zidong Yang-1003802316"
+date: 2020-09-23
+bibliography: "references.bib"
+categories: ["R"]
+---
+
+## Abstract
+
+With COVID-19 turning into "COVID-2020", shelters in each city are in need of special government emergency responses. Toronto with the largest shelter system in Canada are cutting the maximum capacity by 50% in response to COVID to achieve social distancing.
+
+## Introduction
+
+This is an article discussing the occupancy rate of a Toronto shelter facility during the first 8 months in 2020. With a bumpy entering into 2020, Toronto city has been deducing capacity of several shelter facilities. Take the largest location in Toronto for example, COSTI Radisson Hotel had their capacity cut from 888 in January to only 360 recently. (Downward trend shown in Graph below)
+
+Packages used contain @citetidyverse, @citeggplot2, @citedplyr and @citeopendatatoronto.
+```{r, echo = FALSE, message = FALSE}
+install.packages("opendatatoronto")
+library(opendatatoronto)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+shelter2020 <- readr::read_csv(
+  file = "Daily shelter occupancy current .csv",
+  col_names = TRUE,
+  col_types = stringr::str_c(rep("c",15),collapse = "") # Read all 13 columns as "c"haracter
+)
+hoteldata <- shelter2020 %>% 
+  filter(FACILITY_NAME == "COSTI Radisson Hotel" & PROGRAM_NAME == "COSTI Radisson Hotel Family Program.")#same location has more than one program resulting multiple occupancy or capacity data on the same day, to avoid, restrict data set to one program
+
+hoteldata %>% #graph a scatter plot to shown downward trend
+  ggplot(mapping = aes(x=OCCUPANCY_DATE,y=CAPACITY)) +
+  geom_point()+
+   labs(title = "Decreasing Capacity Trend in Scatter Plot",
+       subtitle = "COSTI Radisson Hotel Family Program 2020, Toronto, ON, CA",
+       x = "Time (Jan to Sept. 21st)",
+       y = "Capacity")+ 
+  theme(axis.text.x = element_blank(),axis.ticks.x = element_blank())#x-axis contains daily dates, unnecessary to show here, therefore hide it
+  
+
+```
+
+With an over 50% deducting rate of capacity on shelter facilities, issues can be raised. Why would government drastically decrease the spots in shelters during a global pandemic? Is it a rational action to do during this specific time in history? This report will take a closer look into the actual occupancy rate in COSTI Radisson Hotel in 2020 to see validity on this government decision.
+
+
+## Data Collection
+
+The raw data set is publicly accessible on the Toronto Open Data Portal (https://open/toronto/ca/). The name of the data package I chose is "Daily shelter occupancy current .csv". This data set kept daily track of occupancy and capacity for all the shelter facilities in Toronto starting from 2020 to September 21. I picked the largest program in the biggest facility to be my analyzing subject, the COSTI Radisson Hotel Family Program. In order to better understand whether its capacity meets the needs, I transformed the daily data set into a monthly scale and calculated the monthly occupancy rate for this facility. Considering the month of September is not yet complete, only data of first 8 months are being used. 
+
+Here is a glimpse of my data set which contains 8 months of total number of occupants and capacity for COSTI Radisson Hotel Family Program. Also, the monthly occupancy rates can be calculated as gross occupancy divided by gross capacity of their corresponding month.
+
+```{r, echo=FALSE}
+
+#get a summarized data set that grouped by month
+myset <- hoteldata %>% 
+  mutate(month = str_sub(hoteldata$OCCUPANCY_DATE,6,7)) %>% #reformat column-OCCUPANCY_DATE into month
+  
+  mutate_at(c("OCCUPANCY","CAPACITY","month"),as.numeric) %>% #data were read as string, now change them back to numbers for further calculations needs
+  filter(month < 9) %>% #September only has data till the 21st, therefore, drop this month
+  group_by(month) %>% 
+  summarise(OCCUPANCY = sum(OCCUPANCY),#same month gross occupancy
+            CAPACITY = sum(CAPACITY),
+            occupancy_rate = OCCUPANCY/CAPACITY)
+
+glimpse(myset)
+
+```
+
+## Data Analysis
+
+I visualize the monthly occupancy rate fluctuation in a line chart with month on the x-axis and occupancy rate on the y-axis. The occupancy rate stayed fairly steady around 86% in the beginning 4 months despite a stair-case descending speed on gross monthly capacity. In May, the occupancy rate hitted a bottom low at around 74.8%. The reason why May had the lowest occupancy rate could be explained by the two-month continuously dropping at a speed of approximately 20% capacity/per month.  With the capacity cutting down notice in advance, there might be more people moving out than actual needed. However it only took less one month for the facility to fill up back to its beginning level of this year. In June, occupancy rate at COSTI Radisson Hotel (Family Program) peaked at 87.4% while its capacity hit the second low in 8 month. From May to June, this is where the capacity dropped the most between each month. It gave people very much lesser time to cope this change, therefore June became the most packed month for this facility by September in 2020. In July, the capacity was slightly adjusted up by approximately 5% in the next month. The result was significant, the occupancy rate went down to 76.8% within a month. 
+
+```{r}
+#graph a line chart to show monthly fluctuation on occupancy rate
+myset %>% 
+  ggplot(mapping = aes(x=month,y=occupancy_rate)) +
+  geom_line()+
+  labs(title = "2020 Jan. to Aug. Occupancy Rate in a Shelter Facility",
+       subtitle = "COSTI Radisson Hotel Family Program, Toronto, ON, CA",
+       x = "Month",
+       y = "Occupancy Rate") 
+#graph another line chart to show capacity fluctuation trend. capacity as denominator, how does it explain the occuapny rate
+myset %>% 
+  ggplot(mapping = aes(x=month,y=CAPACITY)) +
+  geom_line()+
+  labs(title = "Capacity Trend in Scatter Plot",
+       subtitle = "COSTI Radisson Hotel Family Program, Toronto, ON, CA",
+       x = "Month",
+       y = "Gross Capacity")
+
+```
+
+## Discussion
+
+Even thought the people who's in need may become even more in need during COVID-19, there are still some necessary health care measurements that need to be followed for the sake of their own health. Cutting capacity in half helps maintaining healthy social distance. It might be concerning seeing shelter nowadays has to clean out half of the people who used to live there before the pandemic start,, but this does not simply mean the government is depriving half of the vulnerable populations' living places. According to the City of Toronto website, 30 new temporary shelters had opened being about to allocate more than 3500 people, therefore explained the 50% decrease on shelter capacity.
+
+## References
+CA. City of Toronto COVID-19 Response for People Experiencing Homelessness. Aug 7, 2020. https://www.toronto.ca/news/city-of-toronto-covid-19-response-for-people-experiencing-homelessness/
+
